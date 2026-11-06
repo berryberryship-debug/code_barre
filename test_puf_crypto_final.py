@@ -48,27 +48,31 @@ def main():
     
     # --- Phase d'Enrôlement (Fabrication) ---
     ref = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.0)
-    bits_ref_full, _ = extraire_bits(ref)
+    bits_ref_full, masque_valide = extraire_bits(ref)
     
-    # On prend 48 bits stables pour avoir 6 octets (assez pour Reed-Solomon)
-    bits_ref = bits_ref_full[:_48] 
+    # On filtre avec le masque de zone de garde, puis on prend 48 bits (6 octets)
+    bits_stables_ref = bits_ref_full[masque_valide]
+    bits_ref = bits_stables_ref[:48] 
     ref_bytes = np.packbits(bits_ref).tobytes()
     
     # Création d'un code correcteur Reed-Solomon (6 octets de données + 6 de correction)
     rs = reedsolo.RSCodec(6)
     code_secret = rs.encode(ref_bytes)
     
-    # On hache le code secret pour créer la clé finale (Privacy Amplification)
+    # Hachage pour créer la clé finale
     cle_finale_ref = hashlib.sha256(code_secret).hexdigest()
     print(f"Clé de référence SHA-256 : {cle_finale_ref[:16]}... (256 bits)")
 
     # --- Phase d'Authentification (Lecture sous bruit) ---
-    print("\n--- Test de lecture sous bruit et rotation ---")
+    print("\n--- Test de lecture sous bruit ---")
     
     # On simule une lecture avec de la poussière (bruit 0.05)
     bruitee = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.05)
     bits_bruites_full, _ = extraire_bits(bruitee)
-    bits_bruites = bits_bruites_full[:_48]
+    
+    # On applique le MEME masque de zone de garde qu'à l'enrôlement
+    bits_stables_bruites = bits_bruites_full[masque_valide]
+    bits_bruites = bits_stables_bruites[:48]
     bytes_bruites = np.packbits(bits_bruites).tobytes()
     
     try:
