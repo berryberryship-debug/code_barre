@@ -18,8 +18,9 @@ def simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.01):
     intensite_bruitee = intensite + np.random.normal(0, bruit_camera, intensite.shape)
     return np.clip(intensite_bruitee, 0, 1)
 
-def extraire_cle_robuste(intensite, block_size=8):
-    intensite_floue = gaussian_filter(intensite, sigma=2.0)
+# MODIFICATION ICI : Blocs plus gros (12) et flou plus fort (3.0)
+def extraire_cle_robuste(intensite, block_size=12):
+    intensite_floue = gaussian_filter(intensite, sigma=3.0)
     N = intensite.shape[0]
     n_blocks = N // block_size
     blocs = intensite_floue.reshape(n_blocks, block_size, n_blocks, block_size)
@@ -46,7 +47,7 @@ def redresser_image(intensite_bruitee, intensite_ref, angles_cherches):
     return meilleur_angle, meilleure_correlation
 
 def main():
-    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (RECALAGE) ===")
+    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (V2) ===")
     
     N = 128
     np.random.seed(42)
