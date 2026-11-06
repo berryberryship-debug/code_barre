@@ -1,12 +1,23 @@
-# Code-barres topologique : simulation d'un réseau de jonctions Josephson frustré
+# Code-barres topologique : du réseau Josephson à la PUF optique
 
 **Statut : exploratoire. Résultats de simulation uniquement.**
-Aucun matériau réel n'a été mesuré ni modélisé. Le lien entre la frustration `f` du modèle et une microstructure physique reste une hypothèse non testée.
+**Domaines :** physique de la matière condensée, photonique, cryptographie physique.
 
-## Idée testée
+## Présentation
+Ce dépôt documente la recherche d'une signature physique difficile à reproduire (un « code-barres » qui ne repose ni sur une encre ni sur un motif visuel, mais sur la structure fine d'un matériau). Que cette signature soit réellement infalsifiable n'est **pas démontré** : la résistance à la contrefaçon n'a pas été étudiée.
+
+Deux pistes ont été explorées :
+- **Phases 1 et 2** : réseau de jonctions Josephson frustré (simulation).
+- **Phase 3** : PUF optique à partir d'un motif de speckle (simulation, résultats rapportés, voir la section dédiée).
+
+Aucun matériau réel n'a été mesuré ni modélisé. Le lien entre un paramètre du modèle (frustration `f`, ou désordre de particules) et une microstructure physique reste une hypothèse non testée.
+
+## Phases 1 et 2 : réseau de jonctions Josephson frustré
+
+### Idée testée
 Un réseau 2D de phases couplées, soumis à un champ transverse (frustration `f`), répond à un courant de lecture par une tension qui dépend de `f`. On teste si cette réponse peut servir de signature lisible (alphabet de niveaux de `f`).
 
-## Modèle (résumé)
+### Modèle (résumé)
 - Grille N×N de phases φ, dynamique du second ordre amortie (γ = 0.1, dt = 0.05, intégrateur de type vitesse-Verlet).
 - Jauge de Landau : A_x = −f·i. Bords **ouverts** (aucun `np.roll`).
 - Biais DC injecté colonne 0, extrait colonne N−1.
@@ -14,20 +25,7 @@ Un réseau 2D de phases couplées, soumis à un champ transverse (frustration `f
 - Apparenté à une équation RCSJ (Tinkham, *Introduction to Superconductivity*, 2ᵉ éd., 1996). La correspondance exacte n'est pas établie : `beta_c` est défini dans le code mais non utilisé.
 - Température : bruit de Langevin ajouté à la dynamique. [À VÉRIFIER : la formule exacte dans le moteur. Un bruit par pas sur la vitesse s'écrit √(2γT·dt)·ξ ; √(2γT/dt) vaut pour un bruit sur la force, avant multiplication par dt.]
 
-## Résultats (simulation)
-## 🚀 Phase 3 : Pivot vers le Code-Barres Optique (PUF)
-
-Suite aux échecs de robustesse thermique du modèle RCSJ (voir Phase 2), le projet a pivoté vers un modèle de **Fonction Physique Inclonable (PUF) optique**. 
-
-### Principe
-Un laser traverse un polymère chargé de particules aléatoires. La diffraction (Speckle Pattern) est capturée par une caméra et transformée en clé binaire.
-
-### Résultats
-*   **Extraction de clé** : Un algorithme de filtrage spatial (Block Averaging) extrait une clé binaire de 128 bits à partir du motif de diffraction.
-*   **Correction d'erreur** : L'ajout d'un Fuzzy Extractor (Reed-Solomon) permet de corriger les erreurs dues au bruit de la caméra.
-*   **Validation** : À un niveau de bruit de caméra de 0.01, la PUF brute a un taux d'erreur de 2.43%. Le Fuzzy Extractor parvient à **reconstruire la clé secrète à 100%** (0.00% d'erreur), validant le concept d'authentification physique infalsifiable.
-
-Fichier de test : `test_v33_vrai_fuzzy.py`
+### Résultats (simulation)
 
 **1. Courbe I-V.** Le décrochage dépend de `f` (voir `courbe_iv_v16.png`). Le seuil dépend aussi de N : à f = 0.25, ≈ 0.22 pour N = 32 contre ≈ 0.32–0.36 pour N = 16. Le seuil n'est donc pas convergé. Le trait rouge de la figure est un seuil arbitraire.
 
@@ -60,6 +58,35 @@ Lecture :
 
 Pistes non encore testées : calibration à une température différente de celle du test, covariance commune aux classes, 50 graines de calibration, 500 pas de mesure (dans un test à 12 graines, σ entre graines baisse de ≈ 30 à 40 % entre 150 et 500 pas, mais ne tombe pas à zéro), au moins 120 lectures de test avec intervalle de confiance affiché.
 
+### Bilan des phases 1 et 2
+- Dans le modèle, un état bloqué existe et la tension croît avec `f` ; le seuil dépend de N.
+- En lecture unique, les niveaux voisins se séparent mal (≈ 5 à 18 % d'erreur par côté), et la température déplace la tension.
+- Calibrée à T = 0 puis lue à T = 0.05, la lecture à 3 niveaux échoue (≈ 63 % d'erreur dans la reproduction indépendante). Calibrée à T = 0.05, l'erreur est d'environ 23–28 % (lecture à 1 ou 2 biais) et de 13–22 % pour le scanner V27.
+- Un résumé externe parle d'une erreur de 2,4 % à T = 0 contre plus de 50 % à T = 0.05, attribuée à la « loi d'Arrhenius ». Ces chiffres ne sont pas reproduits ici, `test_v28` n'a pas été relu, et le moteur utilise un bruit de Langevin, pas une loi d'Arrhenius.
+- Conclusion prudente : dans ce modèle, une lecture unique à température non contrôlée n'est pas fiable. Comme T est en unités du modèle, rien ne permet de conclure sur une lecture à température ambiante.
+
+## Phase 3 : pivot vers une PUF optique (speckle)
+
+**Statut des résultats : rapportés par l'auteur du dépôt, non reproduits indépendamment.** Les scripts `test_v33_vrai_fuzzy.py` et `test_puf_rotation.py` n'ont pas été relus.
+
+**Principe.** Un laser traverse un polymère chargé de particules aléatoires. Le motif de diffraction (speckle) est capturé par une caméra puis transformé en clé. Contexte : Pappu et al., *Science* 297, 2026 (2002), pour le speckle comme fonction physique à sens unique ; Dodis, Reyzin & Smith, EUROCRYPT 2004, pour les extracteurs flous. Ces références donnent le cadre, pas les résultats ci-dessous.
+
+**Résultats rapportés (simulation) :**
+
+| Mesure | Valeur rapportée |
+|---|---|
+| Distance inter-puces (100 puces) | 49,98 % en moyenne |
+| Erreur intra-puce, bruit de caméra | ≈ 2,4 % |
+| Erreur intra-puce, rotation de 3,5° (masque circulaire + zone de garde) | ≈ 1,85 % |
+| Extracteur flou (Reed-Solomon), clé de 128 bits | reconstruction annoncée « identique à chaque lecture » |
+
+**À documenter avant de conclure :**
+- **Génération du speckle** : si les motifs des puces sont tirés au hasard, une distance inter-puces proche de 50 % est attendue par construction et ne valide pas le matériau. Il faut préciser le modèle physique simulé.
+- **Bruit et rotation** : loi du bruit, nombre de lectures, graines, et séparation entre lectures d'enrôlement et de test. Le chiffre 2,4 % apparaît aussi dans le résumé de la phase 2 : vérifier qu'il n'y a pas de confusion.
+- **Zone de garde** : comment les bits instables sont choisis, et sur quelles lectures.
+- **Clé de 128 bits** : remplacer « 100 % identique » par un taux d'échec mesuré sur n tentatives, avec intervalle de confiance. Compter l'entropie résiduelle après les données auxiliaires (128 bits de clé demandent plus de 128 bits d'entropie brute).
+- **Modèle d'attaquant** (copie du polymère, modélisation du speckle, lecture partielle) : non étudié.
+
 ## Limites connues
 - Simulation déterministe : seul le bruit initial (σ = 0.01) varie entre graines, plus le bruit thermique ajouté.
 - N = 16 et 32 seulement ; dépendance en N non explorée au-delà.
@@ -78,6 +105,8 @@ python test_v16_precision.py          # courbes I-V
 python test_v16c_matrice_confusion.py # séparation des moyennes, 20 graines
 python test_v19_temperature.py        # effet de T
 python test_v27_scanner_4d.py         # scanner 4 biais (calibration et test à la même T)
+python test_v33_vrai_fuzzy.py         # (phase 3) PUF optique + Reed-Solomon, résultats non reproduits
+python test_puf_rotation.py           # (phase 3) robustesse à la rotation, résultats non reproduits
 ```
 [À COMPLÉTER : versions de Python et NumPy, durée approximative, graines utilisées.]
 
@@ -95,8 +124,13 @@ test_v19_temperature.py         # effet de T
 test_v21_cartographie_temp.py
 test_v23_scanner_mahalanobis.py
 test_v27_scanner_4d.py          # scanner 4 biais, voir section 4
+test_v28_*.py                   # [à ajouter] cité dans le bilan, non relu
+test_v33_vrai_fuzzy.py          # (phase 3) PUF optique + Reed-Solomon
+test_puf_rotation.py            # (phase 3) robustesse géométrique
 ```
 
 ## Références
 - Tinkham, M., *Introduction to Superconductivity*, 2ᵉ éd., McGraw-Hill, 1996.
 - Teitel, S. & Jayaprakash, C., Phys. Rev. B 27, 598 (1983) : contexte sur les modèles XY frustrés (ne fournit pas les résultats ci-dessus).
+- Pappu, R., Recht, B., Taylor, J. & Gershenfeld, N., *Science* 297, 2026 (2002) : contexte PUF optique (ne fournit pas les résultats de la phase 3).
+- Dodis, Y., Reyzin, L. & Smith, A., EUROCRYPT 2004 : contexte sur les extracteurs flous.
