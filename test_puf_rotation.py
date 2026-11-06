@@ -22,9 +22,7 @@ def extraire_cle_robuste(intensite, block_size=16):
     intensite_floue = gaussian_filter(intensite, sigma=3.0)
     N = intensite.shape[0]
     n_blocks = N // block_size
-    # On coupe l'image pour s'assurer que la taille est parfaitement divisible
-    intensite_coupee = intensite_floue[:n_blocks*block_size, :n_blocks*block_size]
-    blocs = intensite_coupee.reshape(n_blocks, block_size, n_blocks, block_size)
+    blocs = intensite_floue.reshape(n_blocks, block_size, n_blocks, block_size)
     moyennes = blocs.mean(axis=(1, 3))
     bits = (moyennes[:, :-1] > moyennes[:, 1:]).astype(np.uint8)
     return bits.flatten()
@@ -48,7 +46,7 @@ def redresser_image(intensite_bruitee, intensite_ref, angles_cherches):
     return meilleur_angle, meilleure_correlation
 
 def main():
-    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (CORRIGE) ===")
+    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (V3) ===")
     
     N = 128
     np.random.seed(42)
