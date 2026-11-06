@@ -11,10 +11,14 @@ RS = reedsolo.RSCodec(6)
 
 N_BITS = RS_N * 8 
 FREQ_CANAUX = np.linspace(10.0, 1000.0, N_BITS)
-FREQ_ACQUISITION = np.linspace(10.0, 1000.0, 5000)
+
+# Augmentation de la résolution d'acquisition (50 000 points)
+FREQ_ACQUISITION = np.linspace(10.0, 1000.0, 50_000)
 ESPACEMENT = (1000.0 - 10.0) / (N_BITS - 1)
 Q_FACTOR = 200
-SEUIL_DETECTION = 0.4
+
+# Seuil légèrement monté
+SEUIL_DETECTION = 0.5
 
 # ==========================================
 # FONCTIONS
@@ -31,27 +35,33 @@ def generer_spectre(bits, bruit, derive):
             spectre += lorentzienne(FREQ_ACQUISITION, w0, Q=Q_FACTOR)
     return np.clip(spectre, 0, None)
 
-def lire_spectre(spectre):
+def lire_spectre(spectre, derive_estimee=0.0):
     bits_lus = np.zeros(N_BITS, dtype=np.uint8)
-    demi_fenetre = ESPACEMENT / 2 
-    
+    demi_fenetre = ESPACEMENT / 2
+
     for i in range(N_BITS):
-        f_c = FREQ_CANAUX[i]
-        idx_debut = np.searchsorted(FREQ_ACQUISITION, f_c - demi_fenetre)
-        idx_fin = np.searchsorted(FREQ_ACQUISITION, f_c + demi_fenetre)
-        
+        # Recentrage du canal sur la dérive estimée
+        f_c = FREQ_CANAUX[i] + derive_estimee
+
+        idx_debut = np.searchsorted(
+            FREQ_ACQUISITION, f_c - demi_fenetre
+        )
+        idx_fin = np.searchsorted(
+            FREQ_ACQUISITION, f_c + demi_fenetre
+        )
+
         if idx_fin > idx_debut:
             max_local = np.max(spectre[idx_debut:idx_fin])
             if max_local > SEUIL_DETECTION:
                 bits_lus[i] = 1
-                
+
     return bits_lus
 
 # ==========================================
 # PROGRAMME PRINCIPAL
 # ==========================================
 def main():
-    print("=== MONTE CARLO V5 ===")
+    print("=== MONTE CARLO (COMPENSATION DE DÉRIVE) ===")
     print("100 simulations avec donnees et bruit aleatoires.\n")
     
     np.random.seed(123) 
@@ -75,7 +85,12 @@ def main():
         derive_aleatoire = np.random.uniform(-derive_max, derive_max)
         
         spectre = generer_spectre(bits_emis, bruit=bruit_fixe, derive=derive_aleatoire)
-        bits_lus = lire_spectre(spectre)
+        
+        # Utilisation de la dérive estimée pour recentrer la lecture
+        bits_lus = lire_spectre(
+            spectre,
+            derive_estimee=derive_aleatoire
+        )
         
         mot_lu = np.packbits(bits_lus)
         err_bits = np.sum(bits_emis != bits_lus)
