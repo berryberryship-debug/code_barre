@@ -2,80 +2,84 @@ import numpy as np
 from scipy.ndimage import gaussian_filter, rotate
 
 def generer_masque_phase(N=128):
-    phase = np.random.uniform(0, 2*np.pi, (N, N))
-    return np.exp(1j * phase)
+    return np.exp(1j * np.random.uniform(0, 2*np.pi, (N, N)))
 
 def simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.01):
     if angle != 0.0:
-        # On revient à l'interpolation normale (order=3 par défaut)
-        masque_rot = rotate(np.real(masque), angle, reshape=False) + \
-                     1j * rotate(np.imag(masque), angle, reshape=False)
+        masque_rot = rotate(np.real(masque), angle, reshape=False) + 1j * rotate(np.imag(masque), angle, reshape=False)
     else:
         masque_rot = masque
-
     champ = np.fft.fftshift(np.fft.fft2(masque_rot))
     intensite = np.abs(champ)**2
     intensite = intensite / np.max(intensite)
     intensite_bruitee = intensite + np.random.normal(0, bruit_camera, intensite.shape)
     return np.clip(intensite_bruitee, 0, 1)
 
-def extraire_cle_robuste(intensite, block_size=8):
-    # On revient à sigma=2.0 et block_size=8
+def extraire_bits_et_indices(intensite, block_size=8, seuil=0.05):
+    """Extrait les bits ET garde seulement ceux qui sont fiables (zone de garde) et au centre."""
     intensite_floue = gaussian_filter(intensite, sigma=2.0)
     N = intensite.shape[0]
     n_blocks = N // block_size
     blocs = intensite_floue.reshape(n_blocks, block_size, n_blocks, block_size)
     moyennes = blocs.mean(axis=(1, 3))
-    bits = (moyennes[:, :-1] > moyennes[:, 1:]).astype(np.uint8)
-    return bits.flatten()
+    
+    # 1. Calcul des différences entre blocs voisins
+    diff = moyennes[:, :-1] - moyennes[:, 1:]
+    
+    # 2. Masque circulaire (on ignore les bords de l'image)
+    y, x = np.ogrid[:n_blocks, :n_blocks - 1]
+    centre = (n_blocks - 1) / 2
+    masque_cercle = ((x - centre)**2 + (y - centre)**2) <= (centre * 0.85)**2
+    
+    # 3. Zone de garde (on ignore les bits instables où la différence est trop faible)
+    masque_garde = np.abs(diff) > seuil
+    
+    # On combine les deux masques
+    masque_valide = masque_cercle & masque_garde
+    
+    bits = (diff > 0).astype(np.uint8)
+    return bits, masque_valide
 
 def distance_hamming(cle1, cle2):
     n = min(len(cle1), len(cle2))
     return np.mean(cle1[:n] != cle2[:n]) * 100
 
-def redresser_image(intensite_bruitee, intensite_ref, angles_cherches):
-    meilleur_angle = 0.0
-    meilleure_correlation = -1.0
+def main():
+    print("=== TEST FINAL : MASQUE CIRCULAIRE + ZONE DE GARDE ===")
+    np.random.seed(42)
+    masque = generer_masque_phase(128)
     
-    for a in angles_cherches:
-        img_redressee = rotate(intensite_bruitee, a, reshape=False)
-        corr = np.corrcoef(img_redressee.flatten(), intensite_ref.flatten())[0, 1]
-        
-        if corr > meilleure_correlation:
-            meilleure_correlation = corr
+    # Enrôlement (Référence)
+    ref = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.0)
+    bits_ref_full, masque_valide = extraire_bits_et_indices(ref)
+    
+    # On ne garde que les bits fiables pour la clé de référence
+    cle_ref = bits_ref_full[masque_valide]
+    print(f"Taille de la clé stable : {len(cle_ref)} bits (sur {bits_ref_full.size})")
+    
+    # Test avec défaut
+    bruitee = simuler_lecture_laser(masque, angle=3.5, bruit_camera=0.01)
+    
+    # Sans recalage
+    bits_sans, _ = extraire_bits_et_indices(bruitee)
+    cle_sans = bits_sans[masque_valide] # on applique le même masque
+    print(f"Erreur SANS recalage : {distance_hamming(cle_ref, cle_sans):.2f}%")
+    
+    # Avec recalage
+    meilleur_angle, meilleure_corr = 0.0, -1.0
+    for a in np.arange(-6.0, 6.1, 0.5):
+        img = rotate(bruitee, a, reshape=False)
+        corr = np.corrcoef(img.flatten(), ref.flatten())[0, 1]
+        if corr > meilleure_corr:
+            meilleure_corr = corr
             meilleur_angle = a
             
-    return meilleur_angle, meilleure_correlation
-
-def main():
-    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (FINAL) ===")
+    corrigee = rotate(bruitee, meilleur_angle, reshape=False)
+    bits_avec, _ = extraire_bits_et_indices(corrigee)
+    cle_avec = bits_avec[masque_valide]
     
-    N = 128
-    np.random.seed(42)
-    masque = generer_masque_phase(N)
-    
-    intensite_ref = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.0)
-    cle_ref = extraire_cle_robuste(intensite_ref)
-    
-    angle_vrai_defaut = 3.5
-    print(f"\nSimulation d'une lecture avec un defaut de {angle_vrai_defaut} degres...")
-    intensite_bruitee = simuler_lecture_laser(masque, angle=angle_vrai_defaut, bruit_camera=0.01)
-    
-    cle_sans_recalage = extraire_cle_robuste(intensite_bruitee)
-    err_sans = distance_hamming(cle_ref, cle_sans_recalage)
-    print(f"-> Erreur SANS recalage : {err_sans:.2f}% (La cle est detruite)")
-    
-    print("-> L'algorithme cherche le meilleur angle de correction...")
-    angles_a_tester = np.arange(-6.0, 6.1, 0.5) 
-    
-    angle_trouve, correlation = redresser_image(intensite_bruitee, intensite_ref, angles_a_tester)
-    
-    intensite_corrigee = rotate(intensite_bruitee, angle_trouve, reshape=False)
-    cle_avec_recalage = extraire_cle_robuste(intensite_corrigee)
-    err_avec = distance_hamming(cle_ref, cle_avec_recalage)
-    
-    print(f"-> Angle de correction trouve : {angle_trouve:.1f} degres (Correlation : {correlation:.3f})")
-    print(f"-> Erreur AVEC recalage  : {err_avec:.2f}%")
+    print(f"Angle trouve : {meilleur_angle} deg (Corr: {meilleure_corr:.3f})")
+    print(f"Erreur AVEC recalage  : {distance_hamming(cle_ref, cle_avec):.2f}%")
 
 if __name__ == "__main__":
     main()
