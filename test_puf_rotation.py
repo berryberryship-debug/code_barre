@@ -15,8 +15,8 @@ def simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.01):
     intensite_bruitee = intensite + np.random.normal(0, bruit_camera, intensite.shape)
     return np.clip(intensite_bruitee, 0, 1)
 
-def extraire_bits_et_indices(intensite, block_size=8, seuil=0.05):
-    """Extrait les bits ET garde seulement ceux qui sont fiables (zone de garde) et au centre."""
+def extraire_bits_et_indices(intensite, block_size=8):
+    """Extrait les bits ET garde les 50% les plus stables (seuil dynamique)."""
     intensite_floue = gaussian_filter(intensite, sigma=2.0)
     N = intensite.shape[0]
     n_blocks = N // block_size
@@ -27,12 +27,15 @@ def extraire_bits_et_indices(intensite, block_size=8, seuil=0.05):
     diff = moyennes[:, :-1] - moyennes[:, 1:]
     
     # 2. Masque circulaire (on ignore les bords de l'image)
-    y, x = np.ogrid[:n_blocks, :n_blocks - 1]
-    centre = (n_blocks - 1) / 2
-    masque_cercle = ((x - centre)**2 + (y - centre)**2) <= (centre * 0.85)**2
+    y, x = np.ogrid[:diff.shape[0], :diff.shape[1]]
+    centre_y = (diff.shape[0] - 1) / 2
+    centre_x = (diff.shape[1] - 1) / 2
+    rayon = min(centre_y, centre_x) * 0.85
+    masque_cercle = ((x - centre_x)**2 + (y - centre_y)**2) <= rayon**2
     
-    # 3. Zone de garde (on ignore les bits instables où la différence est trop faible)
-    masque_garde = np.abs(diff) > seuil
+    # 3. Zone de garde DYNAMIQUE : on garde les bits où la différence est dans le top 50%
+    seuil_dynamique = np.median(np.abs(diff[masque_cercle]))
+    masque_garde = np.abs(diff) > seuil_dynamique
     
     # On combine les deux masques
     masque_valide = masque_cercle & masque_garde
@@ -45,7 +48,7 @@ def distance_hamming(cle1, cle2):
     return np.mean(cle1[:n] != cle2[:n]) * 100
 
 def main():
-    print("=== TEST FINAL : MASQUE CIRCULAIRE + ZONE DE GARDE ===")
+    print("=== TEST FINAL : MASQUE CIRCULAIRE + ZONE DE GARDE DYNAMIQUE ===")
     np.random.seed(42)
     masque = generer_masque_phase(128)
     
@@ -53,16 +56,16 @@ def main():
     ref = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.0)
     bits_ref_full, masque_valide = extraire_bits_et_indices(ref)
     
-    # On ne garde que les bits fiables pour la clé de référence
+    # On ne garde que les bits fiables
     cle_ref = bits_ref_full[masque_valide]
-    print(f"Taille de la clé stable : {len(cle_ref)} bits (sur {bits_ref_full.size})")
+    print(f"Taille de la cle stable : {len(cle_ref)} bits (sur {bits_ref_full.size})")
     
     # Test avec défaut
     bruitee = simuler_lecture_laser(masque, angle=3.5, bruit_camera=0.01)
     
     # Sans recalage
     bits_sans, _ = extraire_bits_et_indices(bruitee)
-    cle_sans = bits_sans[masque_valide] # on applique le même masque
+    cle_sans = bits_sans[masque_valide]
     print(f"Erreur SANS recalage : {distance_hamming(cle_ref, cle_sans):.2f}%")
     
     # Avec recalage
