@@ -16,10 +16,10 @@ except ImportError:
 # CONFIGURATION RS
 # ============================================================
 
-RS_N = 12          # longueur totale
-RS_K = 6           # données
-RS_PARITE = 6      # 6 symboles de parité
-RS_T = RS_PARITE // 2   # 3 erreurs de symboles corrigeables
+RS_N = 12
+RS_K = 6
+RS_PARITE = 6
+RS_T = RS_PARITE // 2
 
 RS = reedsolo.RSCodec(RS_PARITE)
 
@@ -99,8 +99,6 @@ def decoder_rs(mot_recu):
     try:
         resultat = RS.decode(bytes(mot_recu))
 
-        # reedsolo peut retourner directement les données
-        # ou un tuple selon la version.
         if isinstance(resultat, tuple):
             donnees_corrigees = np.frombuffer(
                 resultat[0],
@@ -112,7 +110,6 @@ def decoder_rs(mot_recu):
                 dtype=np.uint8
             )
 
-        # Reconstruction du mot corrigé pour vérification.
         mot_corrige = encoder_rs(donnees_corrigees)
 
         return donnees_corrigees, True, mot_corrige
@@ -189,7 +186,6 @@ def encoder_bits_dans_masque(
     y0 = (N - hauteur) // 2
     x0 = (N - largeur) // 2
 
-    # Chaque bit reçoit un bloc.
     for i, bit in enumerate(bits):
 
         by = i // n_blocks
@@ -371,7 +367,6 @@ def extraire_bits_et_masque(
 
     moyennes = blocs.mean(axis=(1, 3))
 
-    # Différence horizontale.
     diff = (
         moyennes[:, :-1]
         -
@@ -512,9 +507,7 @@ def tester_une_iteration(
 
     rng = np.random.default_rng(seed)
 
-    # --------------------------------------------------------
     # A. DONNÉES ORIGINALES
-    # --------------------------------------------------------
 
     donnees = rng.integers(
         0,
@@ -523,9 +516,7 @@ def tester_une_iteration(
         dtype=np.uint8
     )
 
-    # --------------------------------------------------------
     # B. ENCODAGE RS
-    # --------------------------------------------------------
 
     mot_rs = encoder_rs(donnees)
 
@@ -533,18 +524,14 @@ def tester_une_iteration(
         mot_rs
     )
 
-    # --------------------------------------------------------
     # C. MASQUE PORTEUR
-    # --------------------------------------------------------
 
     masque_base = generer_masque_phase(
         128,
         seed=seed
     )
 
-    # --------------------------------------------------------
     # D. INSERTION DU MOT RS
-    # --------------------------------------------------------
 
     masque = encoder_bits_dans_masque(
         masque_base,
@@ -552,9 +539,7 @@ def tester_une_iteration(
         block_size=block_size
     )
 
-    # --------------------------------------------------------
     # E. LECTURE DE RÉFÉRENCE
-    # --------------------------------------------------------
 
     ref = simuler_lecture_laser(
         masque,
@@ -571,9 +556,7 @@ def tester_une_iteration(
         bits_ref
     )
 
-    # --------------------------------------------------------
     # F. LECTURE ROTÉE + BRUITÉE
-    # --------------------------------------------------------
 
     lecture = simuler_lecture_laser(
         masque,
@@ -644,9 +627,7 @@ def tester_une_iteration(
         mot_avec
     )
 
-    # --------------------------------------------------------
     # VÉRIFICATION FINALE
-    # --------------------------------------------------------
 
     donnees_ok_sans = (
         succes_sans
@@ -883,12 +864,16 @@ def test_monte_carlo_rotation(
         f"{np.mean(angles_estimes):.2f}°"
     )
 
+    # CORRECTION SYNTAXIQUE ET CALCUL DE L'ERREUR
+
+    erreur_angle = np.mean(
+        np.abs(
+            np.asarray(angles_estimes) - angle_reel
+        )
+    )
+
     print(
-        f"Erreur angle moyenne   : "
-        f"{np.mean(np.abs("
-        f"np.asarray(angles_estimes)"
-        f" - angle_reel"
-        f")):.2f}°"
+        f"Erreur angle moyenne   : {erreur_angle:.2f}°"
     )
 
     print(
@@ -941,9 +926,7 @@ def test_rs_pur():
         f"Mot RS        : {mot}"
     )
 
-    # --------------------------------------------------------
     # 0 erreur
-    # --------------------------------------------------------
 
     recu = mot.copy()
 
@@ -957,9 +940,7 @@ def test_rs_pur():
         f"{'OK' if succes else 'ÉCHEC'}"
     )
 
-    # --------------------------------------------------------
     # 3 erreurs
-    # --------------------------------------------------------
 
     recu = mot.copy()
 
@@ -986,9 +967,7 @@ def test_rs_pur():
             f"{np.array_equal(decoded, donnees)}"
         )
 
-    # --------------------------------------------------------
     # 4 erreurs
-    # --------------------------------------------------------
 
     recu = mot.copy()
 
