@@ -1,162 +1,330 @@
-Code-Barres Topologique : Étude Numérique Exploratoire
+Code-Barres Topologique
 
-Statut : Simulation numérique uniquement — aucune validation expérimentale.
-Domaines : Physique de la matière condensée · Photonique · PUF · Cryptographie physique.
+De la jonction Josephson à la résonance spectrale
 
----
+« Signature physique structurée — étude numérique exploratoire »
 
-📌 1. Présentation et Objectif
-
-Ce projet explore la possibilité de construire une signature physique difficile à reproduire, comparable dans sa fonction à un code-barres, mais dont l'information serait portée par la structure physique d'un matériau plutôt que par une encre ou un motif visuel.
-
-La question fondamentale étudiée est :
-
-«« Une microstructure physique peut-elle produire une réponse mesurable suffisamment stable, distinctive et difficile à reproduire pour constituer une identité physique ? »»
-
-Trois architectures ont été explorées numériquement afin d'identifier la piste la plus viable avant toute fabrication matérielle.
+«Statut : Simulation numérique — aucune validation expérimentale.
+Domaines : Physique de la matière condensée · Photonique · PUF · Cryptographie physique.»
 
 ---
 
-🔬 2. Les Trois Architectures Explorées
+1. Présentation
 
-Architecture 1 : Réseau RCSJ — Jonctions Josephson
+Ce projet explore une idée simple mais exigeante : construire une identité à partir de la réponse physique propre d'une structure matérielle, plutôt qu'à partir d'un marquage externe tel qu'une encre, un motif imprimé ou un identifiant électronique conventionnel.
 
-* Principe : Réseau 2D de phases couplées soumis à une frustration magnétique, avec jauge de Landau et bords ouverts.
-* Résultat principal : Le modèle reproduit une relation entre la frustration "f" et la réponse dynamique du réseau, notamment sur les courbes I–V.
-* Limites : La séparation entre niveaux voisins reste insuffisante pour une lecture unique, avec une erreur estimée d'environ 5 à 18 % par côté selon les conditions. La température introduit également une dérive comparable à l'écart entre certains niveaux.
-* Verdict : Modèle physique intéressant, mais signature non suffisamment robuste en lecture unique dans les conditions étudiées.
+Le principe général est celui d'un code-barres physique :
 
----
+«une structure matérielle possède une configuration interne ;
+cette configuration produit une réponse physique ;
+cette réponse est mesurée, transformée en signature numérique puis utilisée pour identifier la structure.»
 
-Architecture 2 : PUF Optique — Speckle
+La question centrale n'est donc pas seulement de produire un signal distinctif, mais d'étudier simultanément quatre propriétés :
 
-* Principe : Diffraction d'un champ optique sur un masque de phase aléatoire, production d'un motif de speckle, extraction de bits et correction d'erreurs par Reed–Solomon.
-* Résultat principal : Très bonne diversité inter-puces simulée, avec une distance moyenne d'environ 49,97 % entre 300 puces.
-* Résultat complémentaire : Avec recalage, le BER simulé descend jusqu'à 3,4 % à 3,5° de rotation dans une condition donnée.
-* Limites : Le recalage actuel utilise l'image de référence d'enrôlement et n'est donc pas encore déployable tel quel. À un bruit de "0.05", environ 12,8 % des reconstructions échouent. L'entropie résiduelle estimée de la preuve de concept est seulement de l'ordre de 36–40 bits.
-* Verdict : Architecture prometteuse pour une étude expérimentale, mais PUF physique non démontrée.
+- distinctivité — deux structures doivent produire des réponses suffisamment différentes ;
+- stabilité — une même structure doit rester identifiable malgré les perturbations de lecture ;
+- reproductibilité de lecture — la signature doit pouvoir être retrouvée à partir de mesures indépendantes ;
+- difficulté de reproduction — reconstruire volontairement la même réponse doit être plus difficile que simplement reproduire l'algorithme de lecture.
 
----
+Le projet étudie ainsi le passage :
 
-Architecture 3 : Code-Barres Spectral — Résonances
+MICROSTRUCTURE
+     ↓
+DYNAMIQUE PHYSIQUE
+     ↓
+RÉPONSE MESURABLE
+     ↓
+EXTRACTION DE CARACTÉRISTIQUES
+     ↓
+SIGNATURE
+     ↓
+CORRECTION / ROBUSTESSE
+     ↓
+IDENTITÉ PHYSIQUE
 
-🌟 PISTE RETENUE POUR LA SUITE
-
-* Principe : Au lieu d'utiliser un motif spatial sensible à l'orientation, l'information est encodée dans 96 canaux de fréquences de résonance. La lecture exploite un filtre adapté (Matched Filter) afin de détecter les signatures malgré le bruit et une dérive fréquentielle.
-* Résultats rapportés : Une expérience Monte Carlo de 100 simulations rapporte 100/100 reconstructions réussies, avec une erreur moyenne annoncée d'environ 1 bit sur 96 avant correction Reed–Solomon.
-* Statut de ces résultats : Ces scripts n'ont pas encore été relus et reproduits indépendamment. Le résultat "100/100" est donc conservé comme résultat rapporté, et non comme validation indépendante.
-* Limites : L'invariance à la rotation reste à vérifier expérimentalement. Les paramètres physiques des résonances, l'entropie, la résistance au clonage et le lien avec une microstructure réelle ne sont pas encore établis.
-* Verdict : La représentation spectrale est retenue comme piste prioritaire pour la suite du projet.
-
----
-
-📊 3. Tableau Comparatif
-
-Critère| Josephson| PUF Optique| Spectrale
-Simulation| ✓| ✓| ✓
-Reproduction indépendante| ✓| ✓| À faire
-Désordre physique| Non| Simulé| À établir
-Lecture unique robuste| Faible| Limitée| À déterminer
-Sensibilité thermique| Forte| Modérée| À déterminer
-Sensibilité à la rotation| Faible| Forte| Potentiellement faible
-Correction Reed–Solomon| Non| ✓| ✓
-Matériau réel| ✗| ✗| ✗
-Résistance au clonage| Non étudiée| Non étudiée| Non étudiée
+La propriété d'identité ne se situe donc pas dans le seul signal numérique final : elle dépend de l'ensemble du couplage entre structure, dynamique physique et protocole de lecture.
 
 ---
 
-🏁 4. Décision de Recherche
+2. Trois architectures physiques
 
-À l'issue de cette phase numérique, l'architecture spectrale est retenue comme piste prioritaire.
+Trois mécanismes ont été explorés numériquement.
 
-Cette décision constitue une orientation de recherche, et non la démonstration que la technologie est déjà validée.
+Architecture| Support physique modélisé| Information extraite| Statut
+1 — Josephson / RCSJ| Réseau 2D de jonctions frustrées| Réponse dynamique sous biais| Reproduit, limites identifiées
+2 — PUF optique| Désordre de phase et speckle| Motif spatial et bits extraits| Reproduit, limites identifiées
+3 — Spectrale| Ensemble de résonances fréquentielles| Signature fréquentielle| Résultats rapportés, à reproduire
 
-L'hypothèse de travail est qu'une signature fréquentielle pourrait offrir un compromis intéressant entre :
+Ces trois voies ne constituent pas trois variantes d'un même algorithme.
 
-- stabilité de lecture ;
-- tolérance au bruit ;
-- tolérance à la dérive ;
-- faible dépendance à l'orientation ;
-- extraction numérique ;
-- correction d'erreurs.
+Elles testent trois façons différentes de transformer une structure physique en information :
 
----
+JOSEPHSON
+Dynamique collective
+       ↓
+Réponse courant–tension
 
-🔭 5. Prochaines Étapes — Phase 2
 
-Avant toute fabrication ou validation expérimentale :
+OPTIQUE
+Désordre spatial
+       ↓
+Speckle
+       ↓
+Extraction de bits
 
-1. Reproduire indépendamment les simulations spectrales Monte Carlo.
-2. Documenter précisément les unités, amplitudes, largeurs et espacements des résonances.
-3. Augmenter le nombre d'essais et établir des intervalles de confiance robustes.
-4. Tester la stabilité en fonction du bruit, de la température et des paramètres de lecture.
-5. Quantifier l'entropie de la signature réellement exploitable.
-6. Définir un modèle d'attaque : mesure, prédiction, imitation et clonage.
-7. Vérifier que les fréquences observées proviennent d'une structure physique non triviale, plutôt que d'une information imposée artificiellement par le concepteur.
 
----
-
-⚙️ 6. Reproduction et Dépendances
-
-Environnement de référence : Python 3.11 · NumPy · SciPy · "reedsolo"
-
-# Installation
-pip install -r requirements.txt
-pip install reedsolo
-
-# Architecture 1 — Josephson
-python test_v16_precision.py
-python test_v27_scanner_4d.py
-
-# Architecture 2 — PUF optique
-python test_v33_vrai_fuzzy.py
-python test_puf_rotation.py
-
-# Architecture 3 — Spectrale
-python test_resonance_spectrale.py
-python test_monte_carlo_spectral.py
+SPECTRALE
+Résonances
+       ↓
+Empreinte fréquentielle
+       ↓
+Décodage
 
 ---
 
-📂 7. Structure du Projet
+3. Architecture 1 — Josephson / RCSJ
 
-README.md
-RAPPORT_PHASE_1.md
-requirements.txt
+La première architecture utilise un réseau bidimensionnel de jonctions Josephson frustrées.
 
-moteur_fluxons_2d.py
+Le système est étudié sous différentes valeurs de frustration, de biais et de température, avec intégration temporelle de la dynamique des phases.
 
-test_v16_precision.py
-test_v27_scanner_4d.py
+L'information n'est donc pas codée directement dans une valeur arbitraire : elle est recherchée dans la réponse collective du réseau.
 
-test_v33_vrai_fuzzy.py
-test_puf_rotation.py
+Résultat principal
 
-test_resonance_spectrale.py
-test_monte_carlo_spectral.py
+Les simulations montrent qu'une séparation statistique entre plusieurs états de frustration peut être obtenue après calibration.
+
+Cependant, la lecture sur une mesure unique reste sensible :
+
+- au bruit thermique ;
+- aux paramètres de lecture ;
+- à la taille du réseau ;
+- au choix du biais ;
+- aux différences entre calibration et mesure.
+
+Les reproductions indépendantes indiquent des taux d'erreur de classification encore significatifs.
+
+Conclusion : le mécanisme physique est intéressant comme générateur de réponse structurée, mais la robustesse d'une identification unitaire n'est pas encore suffisante.
 
 ---
 
-🧭 8. Statut du Projet
+4. Architecture 2 — PUF optique
 
-PHASE 1
-Étude numérique
-      │
-      ├── Josephson ───────► limites identifiées
-      │
-      ├── PUF optique ─────► piste expérimentale possible
-      │
-      └── Spectrale ────────► ★ piste prioritaire
-                                  │
-                                  ▼
-                              PHASE 2
-                         validation numérique
-                              approfondie
-                                  │
-                                  ▼
-                         conception matérielle
-                              éventuelle
+La deuxième architecture exploite le désordre optique.
 
-État actuel : exploration numérique.
-Aucun dispositif physique n'a encore été réalisé.
-L'infalsifiabilité de la signature n'est pas démontrée.
+Une distribution de phases aléatoires produit, après propagation et transformation de Fourier, un motif de speckle complexe. Des caractéristiques spatiales de ce motif sont ensuite transformées en bits.
+
+Une couche Reed–Solomon est utilisée pour tolérer une partie des erreurs de lecture.
+
+L'étude permet notamment de distinguer :
+
+VARIATION DU BRUIT
+        ↓
+VARIATION DU SPECKLE
+        ↓
+ERREURS DE BITS
+        ↓
+CORRECTION
+        ↓
+DÉCISION
+
+Résultat principal
+
+La réponse peut être fortement distinctive entre configurations indépendantes.
+
+En revanche, les rotations, le bruit et surtout les transformations géométriques du motif dégradent rapidement la lecture lorsqu'aucune procédure d'alignement adaptée n'est utilisée.
+
+Le problème devient alors un problème de protocole de lecture, et non simplement de génération d'un motif aléatoire.
+
+Conclusion : le désordre optique fournit une source naturelle de complexité, mais l'invariance aux conditions réelles de mesure doit encore être construite.
+
+---
+
+5. Architecture 3 — Signature spectrale
+
+La troisième architecture explore une représentation différente : coder l'information dans un ensemble de résonances fréquentielles.
+
+Le lecteur ne cherche plus un motif spatial, mais une configuration spectrale :
+
+STRUCTURE
+   ↓
+RÉSONANCES
+   ↓
+SPECTRE MESURÉ
+   ↓
+MATCHING / DÉTECTION
+   ↓
+96 CANAUX
+   ↓
+SIGNATURE
+
+Cette approche est particulièrement intéressante parce qu'elle transforme directement une structure fréquentielle en espace d'information exploitable.
+
+Les simulations rapportées localement montrent une bonne tolérance simulée au bruit et à certains décalages spectraux, avec utilisation d'un décodage correcteur.
+
+Ces résultats n'ont toutefois pas encore fait l'objet d'une reproduction indépendante complète et ne constituent donc pas une validation expérimentale ou une démonstration de PUF physique.
+
+Point critique
+
+La question essentielle pour cette architecture est la suivante :
+
+«Les fréquences sont-elles une propriété émergente d'une microstructure réelle, ou simplement des paramètres imposés numériquement ?»
+
+Dans le premier cas, elles peuvent constituer une véritable empreinte physique.
+
+Dans le second, elles constituent essentiellement un mécanisme de codage spectral.
+
+La transition entre les deux constitue l'une des étapes expérimentales majeures du projet.
+
+---
+
+6. Du signal à l'identité
+
+Le projet distingue explicitement plusieurs niveaux qui sont souvent confondus dans les systèmes d'identification physique :
+
+Niveau 1 — Information
+
+Le système produit une réponse mesurable.
+
+Niveau 2 — Distinction
+
+Deux configurations produisent des réponses statistiquement séparables.
+
+Niveau 3 — Robustesse
+
+La même configuration reste identifiable malgré le bruit et les perturbations de mesure.
+
+Niveau 4 — Non-clonabilité
+
+La reproduction volontaire de la réponse devient difficile sans accès à la structure physique elle-même.
+
+Niveau 5 — Identité physique
+
+La signature devient alors exploitable comme identité attachée au matériau.
+
+RÉPONSE
+  ↓
+DISTINCTION
+  ↓
+ROBUSTESSE
+  ↓
+NON-CLONABILITÉ
+  ↓
+IDENTITÉ
+
+Le projet se situe actuellement entre les niveaux 1 à 3 selon l'architecture.
+
+La non-clonabilité physique et l'identité expérimentale restent à démontrer.
+
+---
+
+7. Architecture informationnelle
+
+Une fois la réponse physique acquise, elle peut être traitée comme une chaîne d'information :
+
+              MATÉRIAU
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ STRUCTURE       │
+        │ PHYSIQUE        │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ DYNAMIQUE /     │
+        │ RÉSONANCE       │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ MESURE          │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ EXTRACTION      │
+        │ DE CARACTÈRES   │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ SIGNATURE        │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ CORRECTION       │
+        │ D'ERREURS        │
+        └────────┬────────┘
+                 │
+                 ▼
+        ┌─────────────────┐
+        │ IDENTIFICATION   │
+        └─────────────────┘
+
+La correction d'erreurs ne crée pas l'identité physique : elle permet de préserver l'information extraite lorsque la mesure est imparfaite.
+
+---
+
+8. Ce qui est établi et ce qui reste ouvert
+
+Établi dans ce projet
+
+- plusieurs mécanismes physiques peuvent être simulés comme sources de signatures structurées ;
+- des réponses distinctives peuvent être obtenues numériquement ;
+- les perturbations de lecture peuvent être quantifiées ;
+- des mécanismes de correction d'erreurs peuvent améliorer la robustesse de décodage ;
+- les trois architectures présentent des compromis physiques différents.
+
+À établir
+
+- fabrication d'une microstructure réelle ;
+- correspondance quantitative entre microstructure et paramètres du modèle ;
+- stabilité temporelle de la signature ;
+- stabilité thermique ;
+- reproductibilité expérimentale ;
+- modèle d'attaque et de clonage ;
+- entropie réellement exploitable ;
+- démonstration qu'une signature physique est effectivement difficile à reproduire.
+
+---
+
+9. Statut scientifique
+
+Ce dépôt est un prototype de recherche numérique.
+
+Les résultats présentés ici ne doivent pas être interprétés comme une preuve qu'un code-barres topologique physiquement infalsifiable a été réalisé.
+
+L'hypothèse étudiée est plus précise :
+
+«Une structure matérielle complexe peut-elle transformer ses degrés de liberté physiques en une réponse mesurable, distinctive, robuste et exploitable comme identité ?»
+
+Le projet cherche à répondre à cette question en faisant progressivement passer le problème :
+
+du modèle numérique → au protocole de lecture → au dispositif physique.
+
+---
+
+10. Prochaine étape
+
+La prochaine phase consiste à déterminer quelle architecture possède le meilleur rapport entre :
+
+complexité physique · stabilité · distinctivité · capacité d'extraction · robustesse · difficulté de clonage.
+
+L'architecture spectrale constitue actuellement une voie prioritaire pour cette étude, mais elle doit encore franchir l'étape essentielle du passage simulation → réalisation physique.
+
+---
+
+11. Références principales
+
+- M. Tinkham, Introduction to Superconductivity, 2nd ed., McGraw-Hill, 1996.
+- S. Teitel & C. Jayaprakash, Phase transitions in frustrated two-dimensional XY models, Physical Review B, 27, 598–601, 1983.
+- R. Pappu, B. Recht, J. Taylor & N. Gershenfeld, Physical One-Way Functions, Science, 297, 2026–2030, 2002.
+- Y. Dodis, L. Reyzin & A. Smith, Fuzzy Extractors: How to Generate Strong Keys from Biometrics and Other Noisy Data, EUROCRYPT 2004.
+
+---
+
+Statut du dépôt
+
+Recherche exploratoire · Simulation numérique · Reproductibilité en cours · Validation expérimentale future
