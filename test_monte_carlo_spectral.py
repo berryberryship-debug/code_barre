@@ -3,7 +3,7 @@ import reedsolo
 import time
 
 # ==========================================
-# CONFIGURATION OPTIMISÉE
+# CONFIGURATION
 # ==========================================
 RS_N = 12
 RS_K = 6
@@ -11,16 +11,13 @@ RS = reedsolo.RSCodec(6)
 
 N_BITS = RS_N * 8 
 FREQ_CANAUX = np.linspace(10.0, 1000.0, N_BITS)
-
-# Augmentation de la résolution d'acquisition (10000 points)
-FREQ_ACQUISITION = np.linspace(10.0, 1000.0, 10000)
+FREQ_ACQUISITION = np.linspace(10.0, 1000.0, 5000)
 ESPACEMENT = (1000.0 - 10.0) / (N_BITS - 1)
-
-# Facteur Q réduit à 80 pour des pics plus larges
-Q_FACTOR = 80
+Q_FACTOR = 200
+SEUIL_DETECTION = 0.4
 
 # ==========================================
-# FONCTIONS DU MOTEUR PHYSIQUE
+# FONCTIONS
 # ==========================================
 def lorentzienne(w, w0, Q, A=1.0):
     largeur = w0 / Q
@@ -32,8 +29,7 @@ def generer_spectre(bits, bruit, derive):
         if bit == 1:
             w0 = FREQ_CANAUX[i] + derive 
             spectre += lorentzienne(FREQ_ACQUISITION, w0, Q=Q_FACTOR)
-    # On évite le clip strict à 0 pour ne pas biaiser le bruit
-    return spectre
+    return np.clip(spectre, 0, None)
 
 def lire_spectre(spectre):
     bits_lus = np.zeros(N_BITS, dtype=np.uint8)
@@ -45,32 +41,26 @@ def lire_spectre(spectre):
         idx_fin = np.searchsorted(FREQ_ACQUISITION, f_c + demi_fenetre)
         
         if idx_fin > idx_debut:
-            signal_local = spectre[idx_debut:idx_fin]
-            max_local = np.max(signal_local)
-            
-            # Seuil adaptatif : on regarde si le pic dépasse 4 fois le bruit de fond local
-            bruit_local = np.median(signal_local)
-            seuil = max(0.3, bruit_local + 0.2)
-            
-            if max_local > seuil:
+            max_local = np.max(spectre[idx_debut:idx_fin])
+            if max_local > SEUIL_DETECTION:
                 bits_lus[i] = 1
+                
     return bits_lus
 
 # ==========================================
-# MONTE CARLO (100 ITÉRATIONS)
+# PROGRAMME PRINCIPAL
 # ==========================================
 def main():
-    print("=== MONTE CARLO : VALIDATION SPECTRALE (V6) ===")
-    print("100 simulations avec des donnees et du bruit aleatoires.\n")
+    print("=== MONTE CARLO V5 ===")
+    print("100 simulations avec donnees et bruit aleatoires.\n")
     
     np.random.seed(123) 
-    
     n_iterations = 100
     succes_count = 0
     erreurs_moyennes = 0
     
-    bruit_fixe = 0.05
-    derive_max = 1.0
+    bruit_fixe = 0.10
+    derive_max = 3.0
     
     start_time = time.time()
     
@@ -95,9 +85,7 @@ def main():
             decoded = RS.decode(bytes(mot_lu))
             if isinstance(decoded, tuple):
                 decoded = decoded[0]
-            
             donnees_corrigees = np.frombuffer(bytes(decoded), dtype=np.uint8)
-            
             if np.array_equal(donnees_corrigees, donnees):
                 succes_count += 1
         except Exception:
@@ -115,7 +103,7 @@ def main():
     print(f"Erreur bits moyenne: {err_moy:.2f} / 96")
     print(f"TAUX DE SUCCES     : {taux_succes:.1f} %")
     
-    if taux_succes >= 90:
+    if taux_succes >= 95:
         print("\n✅ VALIDATION MONTE CARLO REUSSIE !")
     else:
         print("\n⚠️ Le systeme est encore trop fragile.")
