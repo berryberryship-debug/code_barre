@@ -7,8 +7,9 @@ def generer_masque_phase(N=128):
 
 def simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.01):
     if angle != 0.0:
-        masque_rot = rotate(np.real(masque), angle, reshape=False) + \
-                     1j * rotate(np.imag(masque), angle, reshape=False)
+        # On tourne le masque avec order=0 pour éviter le flou
+        masque_rot = rotate(np.real(masque), angle, reshape=False, order=0) + \
+                     1j * rotate(np.imag(masque), angle, reshape=False, order=0)
     else:
         masque_rot = masque
 
@@ -36,7 +37,8 @@ def redresser_image(intensite_bruitee, intensite_ref, angles_cherches):
     meilleure_correlation = -1.0
     
     for a in angles_cherches:
-        img_redressee = rotate(intensite_bruitee, a, reshape=False)
+        # On tourne avec order=0 pour la recherche aussi
+        img_redressee = rotate(intensite_bruitee, a, reshape=False, order=0)
         corr = np.corrcoef(img_redressee.flatten(), intensite_ref.flatten())[0, 1]
         
         if corr > meilleure_correlation:
@@ -46,7 +48,7 @@ def redresser_image(intensite_bruitee, intensite_ref, angles_cherches):
     return meilleur_angle, meilleure_correlation
 
 def main():
-    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (V3) ===")
+    print("=== TEST DE ROBUSTESSE AU POSITIONNEMENT (ORDER=0) ===")
     
     N = 128
     np.random.seed(42)
@@ -68,7 +70,8 @@ def main():
     
     angle_trouve, correlation = redresser_image(intensite_bruitee, intensite_ref, angles_a_tester)
     
-    intensite_corrigee = rotate(intensite_bruitee, angle_trouve, reshape=False)
+    # Application de la correction avec order=0
+    intensite_corrigee = rotate(intensite_bruitee, angle_trouve, reshape=False, order=0)
     cle_avec_recalage = extraire_cle_robuste(intensite_corrigee)
     err_avec = distance_hamming(cle_ref, cle_avec_recalage)
     
