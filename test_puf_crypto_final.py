@@ -28,7 +28,7 @@ def extraire_bits(intensite, block_size=8):
     moyennes = blocs.mean(axis=(1, 3))
     diff = moyennes[:, :-1] - moyennes[:, 1:]
     
-    # Zone de garde dynamique (top 50%)
+    # Zone de garde dynamique
     y, x = np.ogrid[:diff.shape[0], :diff.shape[1]]
     centre_y, centre_x = (diff.shape[0] - 1) / 2, (diff.shape[1] - 1) / 2
     masque_cercle = ((x - centre_x)**2 + (y - centre_y)**2) <= (min(centre_y, centre_x) * 0.85)**2
@@ -39,58 +39,70 @@ def extraire_bits(intensite, block_size=8):
     return bits.flatten(), masque_valide.flatten()
 
 # ==========================================
-# 2. CRYPTOGRAPHIE (Fuzzy Extractor & SHA-256)
+# 2. CRYPTOGRAPHIE (VRAI FUZZY EXTRACTOR)
 # ==========================================
 def main():
-    print("=== PIPELINE CRYPTOGRAPHIQUE FINAL (PUF -> SHA-256) ===")
+    print("=== PIPELINE CRYPTOGRAPHIQUE (VRAIE METHODE) ===")
     np.random.seed(42)
     masque = generer_masque_phase(128)
     
-    # --- Phase d'Enrôlement (Fabrication) ---
+    # On utilise une taille de bloc de 4 pour avoir BEAUCOUP de bits (plus de sécurité)
+    block_size = 4 
+    
+    # --- 1. Enrôlement (Fabrication) ---
     ref = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.0)
-    bits_ref_full, masque_valide = extraire_bits(ref)
+    bits_ref_full, masque_valide = extraire_bits(ref, block_size)
     
-    # On filtre avec le masque de zone de garde, puis on prend 48 bits (6 octets)
-    bits_stables_ref = bits_ref_full[masque_valide]
-    bits_ref = bits_stables_ref[:48] 
-    ref_bytes = np.packbits(bits_ref).tobytes()
+    # On extrait les bits stables, puis on garde les 96 premiers (12 octets)
+    bits_stables = bits_ref_full[masque_valide]
+    bits_puf_bytes = np.packbits(bits_stables[:96]).tobytes()
     
-    # Création d'un code correcteur Reed-Solomon (6 octets de données + 6 de correction)
+    # Clé secrète qu'on veut protéger (6 octets)
+    cle_secrete = np.random.bytes(6)
+    
+    # On la protège avec Reed-Solomon (6 données + 6 correction = 12 octets)
     rs = reedsolo.RSCodec(6)
-    code_secret = rs.encode(ref_bytes)
+    cle_encodee = rs.encode(cle_secrete)
     
-    # Hachage pour créer la clé finale
-    cle_finale_ref = hashlib.sha256(code_secret).hexdigest()
-    print(f"Clé de référence SHA-256 : {cle_finale_ref[:16]}... (256 bits)")
+    # HELPER DATA = PUF XOR CLÉ ENCODÉE
+    helper_data = bytes([a ^ b for a, b in zip(bits_puf_bytes, cle_encodee)])
+    
+    # La clé finale qu'on garde dans la base de données
+    hash_ref = hashlib.sha256(cle_secrete).hexdigest()
+    print(f"Clé secrète hashée : {hash_ref[:16]}... (256 bits)")
 
-    # --- Phase d'Authentification (Lecture sous bruit) ---
+    # --- 2. Authentification (Lecture sous bruit) ---
     print("\n--- Test de lecture sous bruit ---")
     
-    # On simule une lecture avec de la poussière (bruit 0.05)
+    # Lecture avec un bruit de caméra modéré (0.05)
     bruitee = simuler_lecture_laser(masque, angle=0.0, bruit_camera=0.05)
-    bits_bruites_full, _ = extraire_bits(bruitee)
+    bits_bruites_full, _ = extraire_bits(bruitee, block_size)
     
-    # On applique le MEME masque de zone de garde qu'à l'enrôlement
+    # On applique le même masque qu'à l'enrôlement
     bits_stables_bruites = bits_bruites_full[masque_valide]
-    bits_bruites = bits_stables_bruites[:48]
-    bytes_bruites = np.packbits(bits_bruites).tobytes()
+    bits_puf_bruites_bytes = np.packbits(bits_stables_bruites[:96]).tobytes()
+    
+    # RECONSTRUCTION : (PUF bruitée) XOR (Helper Data)
+    # Cela recrée la clé encodée, mais avec les erreurs du bruit
+    cle_encodee_bruitee = bytes([a ^ b for a, b in zip(bits_puf_bruites_bytes, helper_data)])
     
     try:
-        # Reed-Solomon tente de corriger les erreurs
-        bytes_corriges, _, _ = rs.decode(bytes_bruites)
+        # Reed-Solomon corrige les erreurs et retrouve la clé secrète
+        cle_retrouvee, _, _ = rs.decode(cle_encodee_bruitee)
+        cle_retrouvee = bytes(cle_retrouvee)
         
-        # On hache la clé corrigée
-        cle_finale_test = hashlib.sha256(bytes(bytes_corriges)).hexdigest()
+        # On hache la clé retrouvée
+        hash_test = hashlib.sha256(cle_retrouvee).hexdigest()
         
-        print(f"Clé testée SHA-256     : {cle_finale_test[:16]}...")
+        print(f"Clé testée hashée  : {hash_test[:16]}...")
         
-        if cle_finale_ref == cle_finale_test:
-            print("✅ SUCCÈS : La clé cryptographique est 100% identique malgré le bruit !")
+        if hash_ref == hash_test:
+            print("✅ SUCCÈS TOTAL : La clé cryptographique est 100% identique malgré le bruit !")
         else:
             print("❌ ÉCHEC : Les clés sont différentes.")
             
     except reedsolo.ReedSolomonError:
-        print("❌ ÉCHEC : Trop d'erreurs, la clé n'a pas pu être corrigée.")
+        print("❌ ÉCHEC : Reed-Solomon n'a pas pu corriger (trop d'erreurs).")
 
 if __name__ == "__main__":
     main()
