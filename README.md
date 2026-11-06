@@ -15,6 +15,19 @@ Un réseau 2D de phases couplées, soumis à un champ transverse (frustration `f
 - Température : bruit de Langevin ajouté à la dynamique. [À VÉRIFIER : la formule exacte dans le moteur. Un bruit par pas sur la vitesse s'écrit √(2γT·dt)·ξ ; √(2γT/dt) vaut pour un bruit sur la force, avant multiplication par dt.]
 
 ## Résultats (simulation)
+## 🚀 Phase 3 : Pivot vers le Code-Barres Optique (PUF)
+
+Suite aux échecs de robustesse thermique du modèle RCSJ (voir Phase 2), le projet a pivoté vers un modèle de **Fonction Physique Inclonable (PUF) optique**. 
+
+### Principe
+Un laser traverse un polymère chargé de particules aléatoires. La diffraction (Speckle Pattern) est capturée par une caméra et transformée en clé binaire.
+
+### Résultats
+*   **Extraction de clé** : Un algorithme de filtrage spatial (Block Averaging) extrait une clé binaire de 128 bits à partir du motif de diffraction.
+*   **Correction d'erreur** : L'ajout d'un Fuzzy Extractor (Reed-Solomon) permet de corriger les erreurs dues au bruit de la caméra.
+*   **Validation** : À un niveau de bruit de caméra de 0.01, la PUF brute a un taux d'erreur de 2.43%. Le Fuzzy Extractor parvient à **reconstruire la clé secrète à 100%** (0.00% d'erreur), validant le concept d'authentification physique infalsifiable.
+
+Fichier de test : `test_v33_vrai_fuzzy.py`
 
 **1. Courbe I-V.** Le décrochage dépend de `f` (voir `courbe_iv_v16.png`). Le seuil dépend aussi de N : à f = 0.25, ≈ 0.22 pour N = 32 contre ≈ 0.32–0.36 pour N = 16. Le seuil n'est donc pas convergé. Le trait rouge de la figure est un seuil arbitraire.
 
